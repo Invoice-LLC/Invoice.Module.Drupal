@@ -1,0 +1,7 @@
+name: Invoice
+type: module
+description: 'Invoice Plugin'
+package: Commerce
+core_version_requirement: ^8.8 || ^9
+dependencies:
+  - commerce:commerce_payment

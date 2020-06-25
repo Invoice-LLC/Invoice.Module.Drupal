@@ -1,0 +1,4 @@
+<?php
+function commerce_payment_invoice_form_commerce_checkout_flow_multistep_default_alter(&$form, \Drupal\Core\Form\FormStateInterface $form_state, $form_id) {
+    return $form;
+}
