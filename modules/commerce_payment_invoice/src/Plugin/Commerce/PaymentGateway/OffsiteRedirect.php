@@ -8,6 +8,7 @@ use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\OffsitePaymentGateway
 use Drupal\Core\Form\FormStateInterface;
 use Symfony\Component\Config\Definition\Exception\Exception;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 
 /**
  * @CommercePaymentGateway(
@@ -58,22 +59,22 @@ class OffsiteRedirect extends OffsitePaymentGatewayBase
         $signature = $notification["signature"];
 
         if($signature != $this->getSignature($notification["id"], $notification["status"], $this->configuration['api_key'])) {
-            return "Wrong signature";
+            return new Response('ok', 400);
         }
 
         if($type == "pay") {
 
             if($notification["status"] == "successful") {
                 $this->setPaymentStatus(true,$id, $notification["order"]["amount"]);
-                return "payment successful";
+                return new Response('ok');
             }
             if($notification["status"] == "error") {
                 $this->setPaymentStatus(false,$id, $notification["order"]["amount"]);
-                return "payment failed";
+                return new Response('failed');
             }
         }
 
-        return "null";
+        return new Response('null');
     }
 
     public function onReturn(OrderInterface $order, Request $request) {
@@ -94,6 +95,11 @@ class OffsiteRedirect extends OffsitePaymentGatewayBase
         if($paid) {
             $order_storage = $this->entityTypeManager->getStorage('commerce_order');
             $order = $order_storage->load($id);
+
+            if($order == null) {
+                echo 'order not found';
+                return;
+            }
 
             $order->set('state', 'completed');
             $order->save();
