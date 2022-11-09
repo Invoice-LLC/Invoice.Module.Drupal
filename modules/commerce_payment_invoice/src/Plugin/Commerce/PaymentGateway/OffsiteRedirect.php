@@ -41,7 +41,7 @@ class OffsiteRedirect extends OffsitePaymentGatewayBase
 
         $form['login'] = [
             '#type' => 'textfield',
-            '#title' => "Login",
+            '#title' => "Merchant ID",
             '#default_value' => $this->configuration['login'],
             '#required' => true
         ];
@@ -54,7 +54,7 @@ class OffsiteRedirect extends OffsitePaymentGatewayBase
         $notification = json_decode($postData, true);
 
         $type = $notification["notification_type"];
-        $id = $notification["order"]["id"];
+        $id = strstr($notification["order"]["id"], "-", true);
 
         $signature = $notification["signature"];
 

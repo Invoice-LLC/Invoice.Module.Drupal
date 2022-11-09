@@ -12,6 +12,7 @@ use Drupal\Core\Ajax\OpenModalDialogCommand;
 include "InvoiceSDK/RestClient.php";
 include "InvoiceSDK/CREATE_PAYMENT.php";
 include "InvoiceSDK/CREATE_TERMINAL.php";
+include "InvoiceSDK/GET_TERMINAL.php";
 include "InvoiceSDK/common/ORDER.php";
 include "InvoiceSDK/common/SETTINGS.php";
 
@@ -43,6 +44,9 @@ class PaymentOffsiteForm extends BasePaymentOffsiteForm
         $config = $this->getConfig();
 
         $create_terminal = new \CREATE_TERMINAL("Drupal");
+        $create_terminal->description = "DrupalTerminal";
+        $create_terminal->defaultPrice = "10";
+        $create_terminal->type = "dynamical";
 
         $this->log(json_encode($create_terminal));
 
@@ -60,23 +64,25 @@ class PaymentOffsiteForm extends BasePaymentOffsiteForm
         }
     }
 
-    public function checkOrCreateTerminal() {
-        if(empty($this->getTerminal()) or $this->getTerminal() == null) {
+    public function checkOrCreateTerminal($config) {
+        if(empty($this->getTerminal($config)) or $this->getTerminal($config) == null) {
             $this->createTerminal();
         }
     }
 
+    /**
+     * @return CREATE_PAYMENT
+     */
+
     public function createPayment($amount, $id) {
-        $this->checkOrCreateTerminal();
-
-        $order = new \INVOICE_ORDER($amount);
-        $order->id = $id;
-
-        $settings = new \SETTINGS($this->getTerminal());
-        $settings->success_url = ( ((!empty($_SERVER['HTTPS'])) ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST']);
-
-        $create_payment = new \CREATE_PAYMENT($order, $settings, null);
         $config = $this->getConfig();
+        $this->checkOrCreateTerminal($config);
+        $terminal = $this->getTerminal($config);
+
+        $create_payment = new \CREATE_PAYMENT();
+        $create_payment->order = $this->getOrder($amount, $id);
+        $create_payment->settings = $this->getSettings($terminal);
+        $create_payment->receipt = $this->getReceipt();
 
         $this->log(json_encode($create_payment));
         $restClient = new \RestClient($config['login'], $config['api_key']);
@@ -91,8 +97,58 @@ class PaymentOffsiteForm extends BasePaymentOffsiteForm
         file_put_contents("invoice_tid", $id);
     }
 
-    public function getTerminal() {
-        return file_get_contents("invoice_tid");
+    /**
+     * @return INVOICE_ORDER
+     */
+
+    private function getOrder($amount, $id) {
+      $order = new \INVOICE_ORDER();
+      $order->amount = $amount;
+      $order->id = $id ."-". md5($id);
+      $order->currency = "RUB";
+
+      return $order;
+    }
+
+  /**
+   * @return SETTINGS
+   */
+
+   private function getSettings($terminal) {
+      $url = ((!empty($_SERVER['HTTPS'])) ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'];
+
+      $settings = new \SETTINGS();
+      $settings->terminal_id = $terminal;
+      $settings->success_url = $url;
+      $settings->fail_url = $url;
+
+      return $settings;
+    }
+
+  /**
+   * @return ITEM
+   */
+
+  private function getReceipt() {
+      $receipt = array();
+      return $receipt;
+  }
+
+   /**
+   * @return GET_TERMINAL
+   */
+
+    public function getTerminal($config) {
+      $terminal = new \GET_TERMINAL();
+      $terminal->alias = file_get_contents("invoice_tid");
+      $restClient = new \RestClient($config['login'], $config['api_key']);
+      $info = $restClient->GetTerminal($terminal);
+
+      if($info->id == null || $info->id != $terminal->alias){
+          return null;
+      } else {
+          return $info->id;
+      }
     }
     public function log($log) {
         $fp = fopen('invoice_payment.log', 'a+');
