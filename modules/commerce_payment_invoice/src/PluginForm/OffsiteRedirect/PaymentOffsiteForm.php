@@ -104,7 +104,7 @@ class PaymentOffsiteForm extends BasePaymentOffsiteForm
     private function getOrder($amount, $id) {
       $order = new \INVOICE_ORDER();
       $order->amount = $amount;
-      $order->id = $id ."-". md5($id);
+      $order->id = "$id" . "-" . bin2hex(random_bytes(5));
       $order->currency = "RUB";
 
       return $order;
